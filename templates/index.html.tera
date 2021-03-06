@@ -4,9 +4,8 @@
   <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width" name="viewport"/>
-    <title>Rocket Form Example</title>
+    <title>Character Sheet</title>
     <link href="/chota.min.css" rel="stylesheet"/>
-    <script src="/calculations.js" type="text/javascript"></script>
     <style>
       .container {
         /*max-width: 1200px;*/
@@ -24,7 +23,7 @@
         </small>
       {% endif %}
 
-      <form action="/" enctype="multipart/form-data" method="post">
+      <form action="" enctype="multipart/form-data" method="post">
         <fieldset class="card">
           <legend>General Situation</legend>
           <div class="row">

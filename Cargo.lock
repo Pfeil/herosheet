@@ -12,6 +12,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
+
+[[package]]
 name = "async-trait"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -513,8 +519,12 @@ dependencies = [
 name = "herosheet"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "rand",
  "rocket",
  "rocket_contrib",
+ "serde",
+ "serde_json",
  "time 0.2.25",
 ]
 

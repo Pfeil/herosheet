@@ -1,13 +1,19 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-#[macro_use]extern crate rocket;
+#[macro_use]
+extern crate rocket;
 
-use rocket::http::{Status, ContentType};
-use rocket::form::{Form, Contextual, FromForm, FromFormField, Context};
 use rocket::data::TempFile;
+use rocket::form::{Context, Contextual, Form, FromForm, FromFormField};
+use rocket::{
+    http::{ContentType, Status},
+    response::Redirect,
+};
 
-use rocket_contrib::serve::{StaticFiles, crate_relative};
+use rocket_contrib::serve::{crate_relative, StaticFiles};
 use rocket_contrib::templates::Template;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, FromForm)]
 struct Password<'v> {
@@ -64,7 +70,7 @@ struct Submit<'v> {
     submission: Submission<'v>,
 }
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Character {
     info: PersonalData,
     action_skills: Actionskills,
@@ -74,13 +80,86 @@ struct Character {
     notes: Notes,
 }
 
+const CHARACTERS_FOLDER: &str = crate_relative!("characters");
+
+fn context_load(id: &String) -> Option<serde_json::Value> {
+    use std::fs::File;
+    use std::path::PathBuf;
+    
+    let mut id = String::from(id);
+    id.push_str(".context.json");
+
+    let mut path = PathBuf::from(CHARACTERS_FOLDER);
+    path.push(id);
+
+    println!("load from: {:?}", path);
+    File::open(path)
+        .ok()
+        .map(|file| {
+            serde_json::from_reader::<File, serde_json::Value>(file).ok()
+        })
+        .flatten()
+}
+
+fn context_store(id: &String, context: &Context) -> anyhow::Result<()> {
+    use std::fs::File;
+    use std::path::PathBuf;
+
+    let mut filename = String::from(id);
+    filename.push_str(".context.json");
+
+    let mut filepath = PathBuf::from(CHARACTERS_FOLDER);
+    filepath.push(filename);
+
+    println!("writing to {:?}", filepath);
+    let file = File::create(filepath)?;
+    serde_json::to_writer(file, context)?;
+    Ok(())
+}
+
+impl Character {
+    fn store_to_disk(&self, mut id: String) -> anyhow::Result<()> {
+        use std::fs;
+        use std::path::{Path, PathBuf};
+        // TODO crate_relative will likely not work for distributed binaries!
+        let path = crate_relative!("characters");
+        let path = Path::new(path);
+        if !path.exists() {
+            fs::create_dir(path)?;
+        };
+        id.push_str(".character.json");
+        let filename = Path::new(&id);
+        let mut filepath = PathBuf::from(path);
+        filepath.push(filename);
+        let file = std::fs::File::create(filepath)?;
+        serde_json::to_writer(file, self)?;
+        Ok(())
+    }
+
+    fn from_disk(mut id: String) -> Option<Self> {
+        use std::fs::File;
+        use std::path::PathBuf;
+
+        id.push_str(".character.json");
+        let path = crate_relative!("characters");
+        let mut path = PathBuf::from(path);
+        path.push(id);
+        println!("load from: {:?}", path);
+        File::open(path)
+            .ok()
+            .map(|file| {
+                serde_json::from_reader::<File, Self>(file).ok()
+            })
+            .flatten()
+    }
+}
+
 type Actionskills = Skills;
 type Knowledgeskills = Skills;
 type Socialskills = Skills;
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, FromForm, Serialize, Deserialize)]
 struct PersonalData {
-    id: Option<String>,
     #[field(validate = len(1..50))]
     name: String,
     #[field(validate = len(1..50))]
@@ -97,19 +176,19 @@ struct PersonalData {
     marital_status: String,
 }
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Inventory {
     #[field(validate = len(0..5000))]
     content: String,
 }
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Notes {
     #[field(validate = len(0..5000))]
     content: String,
 }
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Skills {
     skill0: Skill,
     skill1: Skill,
@@ -123,7 +202,7 @@ struct Skills {
     skill9: Skill,
 }
 
-#[derive(Debug, FromForm)]
+#[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Skill {
     #[field(validate = len(0..30))]
     name: String,
@@ -131,17 +210,37 @@ struct Skill {
 }
 
 #[get("/")]
-fn index<'r>() -> Template {
-    Template::render("index", &Context::default())
+fn index() -> Redirect {
+    //Template::render("index", &Context::default())
+    let id: String = rand::random::<u64>().to_string();
+    //(Status::TemporaryRedirect, Redirect::to(uri!(submit: id)))
+    Redirect::to(uri!(new: id))
 }
 
-#[post("/", data = "<form>")]
-fn submit<'r>(form: Form<Contextual<'r, Character>>) -> (Status, Template) {
+#[get("/sheet/<id>")]
+fn new(id: String) -> Template {
+    if let Some(context) = context_load(&id) {
+        println!("LOADING SHEET");
+        Template::render("index", context)
+    } else {
+        println!("NEW SHEET");
+        Template::render("index", &Context::default())
+    }
+}
+
+#[post("/sheet/<id>", data = "<form>")]
+fn submit<'r>(id: String, form: Form<Contextual<'r, Character>>) -> (Status, Template) {
     //println!("{:#?}", &form.value);
-    println!("{:#?}", &form.context);
+    //println!("{:#?}", &form.context);
+    println!("Hello");
+
+    if let Err(e) = context_store(&id, &form.context) {
+        error!("ERROR: {:?}", e);
+    }
     let template = match form.value {
-        Some(ref submission) => {
-            println!("submission: {:#?}", submission);
+        Some(ref character) => {
+            //println!("Character: {:#?}", character);
+            character.store_to_disk(id);
             Template::render("index", &form.context)
         }
         None => Template::render("index", &form.context),
@@ -153,7 +252,8 @@ fn submit<'r>(form: Form<Contextual<'r, Character>>) -> (Status, Template) {
 #[launch]
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
-        .mount("/", routes![index, submit])
+        .mount("/", routes![index])
+        .mount("/", routes![new, submit])
         .attach(Template::fairing())
         .mount("/", StaticFiles::from(crate_relative!("/static")))
 }

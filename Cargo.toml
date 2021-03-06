@@ -1,0 +1,10 @@
+[package]
+name = "herosheet"
+version = "0.1.0"
+authors = ["Andreas Pfeil"]
+edition = "2018"
+
+[dependencies]
+rocket = { git="https://github.com/SergioBenitez/Rocket", commit="f454895" }
+rocket_contrib = {git="https://github.com/SergioBenitez/Rocket", features = ["tera_templates"], commit="f454895" }
+time = "0.2"

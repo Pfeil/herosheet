@@ -3,72 +3,13 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::data::TempFile;
-use rocket::form::{Context, Contextual, Form, FromForm, FromFormField};
-use rocket::{
-    http::{ContentType, Status},
-    response::Redirect,
-};
+use rocket::form::{Context, Contextual, Form, FromForm};
+use rocket::{http::Status, response::Redirect};
 
 use rocket_contrib::serve::{crate_relative, StaticFiles};
 use rocket_contrib::templates::Template;
 
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, FromForm)]
-struct Password<'v> {
-    #[field(validate = len(6..))]
-    #[field(validate = eq(self.second))]
-    first: &'v str,
-    #[field(validate = eq(self.first))]
-    second: &'v str,
-}
-
-#[derive(Debug, FromFormField)]
-enum Rights {
-    Public,
-    Reserved,
-    Exclusive,
-}
-
-#[derive(Debug, FromFormField)]
-enum Category {
-    Biology,
-    Chemistry,
-    Physics,
-    #[field(value = "CS")]
-    ComputerScience,
-}
-
-#[derive(Debug, FromForm)]
-struct Submission<'v> {
-    #[field(validate = len(1..))]
-    title: &'v str,
-    date: time::Date,
-    #[field(validate = len(1..=250))]
-    r#abstract: &'v str,
-    #[field(validate = ext(ContentType::PDF))]
-    file: TempFile<'v>,
-    #[field(validate = len(1..))]
-    category: Vec<Category>,
-    rights: Rights,
-    ready: bool,
-}
-
-#[derive(Debug, FromForm)]
-struct Account<'v> {
-    #[field(validate = len(1..))]
-    name: &'v str,
-    password: Password<'v>,
-    #[field(validate = contains('@').or_else(msg!("invalid email address")))]
-    email: &'v str,
-}
-
-#[derive(Debug, FromForm)]
-struct Submit<'v> {
-    account: Account<'v>,
-    submission: Submission<'v>,
-}
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Character {
@@ -85,7 +26,7 @@ const CHARACTERS_FOLDER: &str = crate_relative!("characters");
 fn context_load(id: &String) -> Option<serde_json::Value> {
     use std::fs::File;
     use std::path::PathBuf;
-    
+
     let mut id = String::from(id);
     id.push_str(".context.json");
 
@@ -95,9 +36,7 @@ fn context_load(id: &String) -> Option<serde_json::Value> {
     println!("load from: {:?}", path);
     File::open(path)
         .ok()
-        .map(|file| {
-            serde_json::from_reader::<File, serde_json::Value>(file).ok()
-        })
+        .map(|file| serde_json::from_reader::<File, serde_json::Value>(file).ok())
         .flatten()
 }
 
@@ -147,9 +86,7 @@ impl Character {
         println!("load from: {:?}", path);
         File::open(path)
             .ok()
-            .map(|file| {
-                serde_json::from_reader::<File, Self>(file).ok()
-            })
+            .map(|file| serde_json::from_reader::<File, Self>(file).ok())
             .flatten()
     }
 }

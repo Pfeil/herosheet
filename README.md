@@ -4,11 +4,11 @@ Herosheet is a simple-to-use, unofficial server-side character sheet hoster for 
 
 ## Current state
 
-It is not yet well tested in practice, but works. It basically just offers a form, which is mostly a 1:1 copy of the PDF sheet. The forms update button will store the values on the server and refresh the calculations on the page. There is no client side javascript.
+It is not yet tested in practice, but the basic functions are available (similar to the PDF features you get in the adobe reader but nowhere else, and without hosting, obviously!). It basically just offers a form, which is mostly a 1:1 copy of the PDF sheet. The forms update button will store the values on the server and refresh the skill calculations on the page. There is currently no client side javascript.
 
 Obviously, this is actually a rather poor "put the paper thing into the computer" approach, but this way it was an easy weekend project for someone who is not a web developer. Ideas on how to evolve this system are welcome :)
 
-Also note that is uses the master branch of the rocket dependency, which is obviously a ridiculous adventure itself.
+Also note that this uses the master branch of the rocket dependency, which is obviously a ridiculous adventure itself.
 
 ## User Experience
 

@@ -64,12 +64,20 @@
 
 {% macro skill_list(legend, fieldname) %}
     <div class="col">
+        {% set skill_points = 0 %}
+        {% for key, value in values %}
+            {% if key is starting_with(fieldname) and key is ending_with(".points") %}
+                {% set n = value.0 | parse_number %}
+                {% set_global skill_points = skill_points + n %}
+            {% endif %}
+        {% endfor %}
         <fieldset>
             <legend>{{ legend }}</legend>
+            {% set general_points = skill_points / 10  | round %}
+            {% set eureka_points = skill_points / 100 | round %}
             <div class="row">
-                <div class="col">General</div>
-                <div class="col">12</div>
-                <div class="col">1</div>
+                <div class="col">General: {{ general_points }}</div>
+                <div class="col">Eureka points: {{ eureka_points }}</div>
             </div>
             {% for a in range(start=0, end=10) %}
                 {% set prefix = fieldname ~ ".skill" ~ a %}
@@ -80,8 +88,11 @@
                     <div class="col-3">
                         {{ self::input(label="", type="number", name=prefix ~ ".points") }}
                     </div>
-                    <div class="col-1">xxx</div>
-                    <div class="col-2">XXX</div>
+                    {% set pointname = prefix ~ ".points" %}
+                    {% set allpoints = self::value_for(name=pointname) | parse_number %}
+                    {% set allpoints = allpoints + general_points %}
+                    <div class="col-1">{{ general_points }}</div>
+                    <div class="col-2">{{ allpoints }}</div>
                 </div>
             {% endfor %}
         </fieldset>

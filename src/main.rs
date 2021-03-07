@@ -3,16 +3,12 @@
 #[macro_use]
 extern crate rocket;
 
-use std::collections::HashMap;
-
 use rocket::form::{Context, Contextual, Form, FromForm};
 use rocket::{http::Status, response::Redirect};
 use rocket_contrib::serve::{crate_relative, StaticFiles};
 use rocket_contrib::templates::Template;
 
 use serde::{Deserialize, Serialize};
-
-use serde_json::Value;
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Character {
@@ -194,32 +190,6 @@ fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/", routes![index])
         .mount("/", routes![new, submit])
-        .attach(Template::custom(|engines| {
-            engines.tera.register_filter("parse_number", parse_number)
-        }))
+        .attach(Template::fairing())
         .mount("/", StaticFiles::from(crate_relative!("/static")))
-}
-
-fn parse_number(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
-    let number: tera::Number = match value {
-        Value::Null => tera::Number::from(0),
-        Value::Bool(b) => {
-            if *b {
-                tera::Number::from(1)
-            } else {
-                tera::Number::from(0)
-            }
-        }
-        Value::Number(n) => n.clone(),
-        Value::String(s) => {
-            let result = s.parse();
-            match result {
-                Ok(n) => n,
-                Err(_e) => tera::Number::from(0),
-            }
-        }
-        Value::Array(a) => tera::Number::from(a.len()),
-        Value::Object(o) => tera::Number::from(o.len()),
-    };
-    tera::Result::Ok(Value::Number(number))
 }

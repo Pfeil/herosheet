@@ -67,7 +67,7 @@
         {% set skill_points = 0 %}
         {% for key, value in values %}
             {% if key is starting_with(fieldname) and key is ending_with(".points") %}
-                {% set n = value.0 | parse_number %}
+                {% set n = value.0 | int %}
                 {% set_global skill_points = skill_points + n %}
             {% endif %}
         {% endfor %}
@@ -76,7 +76,7 @@
             {% set general_points = skill_points / 10  | round %}
             {% set eureka_points = skill_points / 100 | round %}
             <div class="row">
-                <div class="col">General: {{ general_points }}</div>
+                <div class="col">General: {{ general_points }} ({{ skill_points }})</div>
                 <div class="col">Eureka points: {{ eureka_points }}</div>
             </div>
             {% for a in range(start=0, end=10) %}
@@ -89,7 +89,7 @@
                         {{ self::input(label="", type="number", name=prefix ~ ".points") }}
                     </div>
                     {% set pointname = prefix ~ ".points" %}
-                    {% set allpoints = self::value_for(name=pointname) | parse_number %}
+                    {% set allpoints = self::value_for(name=pointname) | int %}
                     {% set allpoints = allpoints + general_points %}
                     <div class="col-1">{{ general_points }}</div>
                     <div class="col-2">{{ allpoints }}</div>

@@ -78,7 +78,7 @@
             {% set_global points = 0 %}
             {% for key, value in values %}
               {% if key is ending_with(".points") %}
-                {% set n = value.0 | parse_number %}
+                {% set n = value.0 | int %}
                 {% set_global points = points + n %}
               {% endif %}
             {% endfor %}

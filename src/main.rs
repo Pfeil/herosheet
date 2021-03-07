@@ -3,13 +3,16 @@
 #[macro_use]
 extern crate rocket;
 
+use std::collections::HashMap;
+
 use rocket::form::{Context, Contextual, Form, FromForm};
 use rocket::{http::Status, response::Redirect};
-
 use rocket_contrib::serve::{crate_relative, StaticFiles};
 use rocket_contrib::templates::Template;
 
 use serde::{Deserialize, Serialize};
+
+use serde_json::Value;
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
 struct Character {
@@ -157,6 +160,7 @@ fn index() -> Redirect {
 #[get("/sheet/<id>")]
 fn new(id: String) -> Template {
     if let Some(context) = context_load(&id) {
+        println!("{:#?}", &context);
         println!("LOADING SHEET");
         Template::render("index", context)
     } else {
@@ -168,8 +172,7 @@ fn new(id: String) -> Template {
 #[post("/sheet/<id>", data = "<form>")]
 fn submit<'r>(id: String, form: Form<Contextual<'r, Character>>) -> (Status, Template) {
     //println!("{:#?}", &form.value);
-    //println!("{:#?}", &form.context);
-    println!("Hello");
+    println!("{:#?}", &form.context);
 
     if let Err(e) = context_store(&id, &form.context) {
         error!("ERROR: {:?}", e);
@@ -191,6 +194,32 @@ fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/", routes![index])
         .mount("/", routes![new, submit])
-        .attach(Template::fairing())
+        .attach(Template::custom(|engines| {
+            engines.tera.register_filter("parse_number", parse_number)
+        }))
         .mount("/", StaticFiles::from(crate_relative!("/static")))
+}
+
+fn parse_number(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
+    let number: tera::Number = match value {
+        Value::Null => tera::Number::from(0),
+        Value::Bool(b) => {
+            if *b {
+                tera::Number::from(1)
+            } else {
+                tera::Number::from(0)
+            }
+        }
+        Value::Number(n) => n.clone(),
+        Value::String(s) => {
+            let result = s.parse();
+            match result {
+                Ok(n) => n,
+                Err(_e) => tera::Number::from(0),
+            }
+        }
+        Value::Array(a) => tera::Number::from(a.len()),
+        Value::Object(o) => tera::Number::from(o.len()),
+    };
+    tera::Result::Ok(Value::Number(number))
 }

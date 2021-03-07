@@ -75,7 +75,18 @@
             {{ m::skill_list(legend="Social Skills", fieldname="social_skills") }}
           </div>
           <div class="row">
-            <div class="col is-center">{{"Sum: " ~ "000" ~ "/" ~ "400"}}</div>
+            {% set_global points = 0 %}
+            {% for key, value in values %}
+              {% if key is ending_with(".points") %}
+                {% set n = value.0 | parse_number %}
+                {% set_global points = points + n %}
+              {% endif %}
+            {% endfor %}
+            {% if points != 400 %}
+              <div class="col is-center bd-error text-error">{{"Sum: " ~ points ~ "/" ~ "400"}}</div>
+            {% else %}
+              <div class="col is-center bd-success text-success">{{"Sum: " ~ points ~ "/" ~ "400"}}</div>
+            {% endif %}
           </div>
         </fieldset>
 

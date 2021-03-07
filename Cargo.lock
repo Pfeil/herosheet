@@ -525,8 +525,6 @@ dependencies = [
  "rocket_contrib",
  "serde",
  "serde_json",
- "tera",
- "time 0.2.25",
 ]
 
 [[package]]

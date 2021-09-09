@@ -1,5 +1,7 @@
 # Herosheet
 
+[![nightly build](https://github.com/Pfeil/herosheet/actions/workflows/build.yml/badge.svg)](https://github.com/Pfeil/herosheet/actions/workflows/build.yml)
+
 Herosheet is a simple-to-use, unofficial server-side character sheet hoster for pen and paper games following the ["How to be a Hero" Pen and Paper ruleset](https://howtobeahero.de/).
 
 ## Current state

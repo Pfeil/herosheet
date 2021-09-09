@@ -1,4 +1,4 @@
-name: Rust
+name: Rust nightly build
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Stable with rustfmt and clippy
+    - name: Nightly with rustfmt and clippy
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal

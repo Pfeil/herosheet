@@ -5,8 +5,8 @@ extern crate rocket;
 
 use rocket::form::{Context, Contextual, Form, FromForm};
 use rocket::{http::Status, response::Redirect};
-use rocket_contrib::serve::{crate_relative, StaticFiles};
-use rocket_contrib::templates::Template;
+
+use rocket_dyn_templates::Template;
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +20,7 @@ struct Character {
     notes: Notes,
 }
 
-const CHARACTERS_FOLDER: &str = crate_relative!("characters");
+const CHARACTERS_FOLDER: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/characters");
 
 fn context_load(id: &String) -> Option<serde_json::Value> {
     use std::fs::File;
@@ -60,7 +60,7 @@ impl Character {
         use std::fs;
         use std::path::{Path, PathBuf};
         // TODO crate_relative will likely not work for distributed binaries!
-        let path = crate_relative!("characters");
+        let path = CHARACTERS_FOLDER;
         let path = Path::new(path);
         if !path.exists() {
             fs::create_dir(path)?;
@@ -79,7 +79,7 @@ impl Character {
         use std::path::PathBuf;
 
         id.push_str(".character.json");
-        let path = crate_relative!("characters");
+        let path = CHARACTERS_FOLDER;
         let mut path = PathBuf::from(path);
         path.push(id);
         println!("load from: {:?}", path);
@@ -150,7 +150,7 @@ fn index() -> Redirect {
     //Template::render("index", &Context::default())
     let id: String = rand::random::<u64>().to_string();
     //(Status::TemporaryRedirect, Redirect::to(uri!(submit: id)))
-    Redirect::to(uri!(new: id))
+    Redirect::to(uri!(new(id)))
 }
 
 #[get("/sheet/<id>")]
@@ -186,10 +186,12 @@ fn submit<'r>(id: String, form: Form<Contextual<'r, Character>>) -> (Status, Tem
 }
 
 #[launch]
-fn rocket() -> rocket::Rocket {
-    rocket::ignite()
+fn rocket() -> _ {
+    use rocket::fs;
+
+    rocket::build()
         .mount("/", routes![index])
         .mount("/", routes![new, submit])
         .attach(Template::fairing())
-        .mount("/", StaticFiles::from(crate_relative!("/static")))
+        .mount("/", fs::FileServer::from(fs::relative!("static")))
 }

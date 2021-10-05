@@ -32,7 +32,7 @@ fn context_load(id: &String) -> Option<serde_json::Value> {
     let mut path = PathBuf::from(CHARACTERS_FOLDER);
     path.push(id);
 
-    println!("load from: {:?}", path);
+    debug!("load from: {:?}", path);
     File::open(path)
         .ok()
         .map(|file| serde_json::from_reader::<File, serde_json::Value>(file).ok())
@@ -49,7 +49,7 @@ fn context_store(id: &String, context: &Context) -> anyhow::Result<()> {
     let mut filepath = PathBuf::from(CHARACTERS_FOLDER);
     filepath.push(filename);
 
-    println!("writing to {:?}", filepath);
+    debug!("writing to {:?}", filepath);
     let file = File::create(filepath)?;
     serde_json::to_writer(file, context)?;
     Ok(())
@@ -82,7 +82,7 @@ impl Character {
         let path = CHARACTERS_FOLDER;
         let mut path = PathBuf::from(path);
         path.push(id);
-        println!("load from: {:?}", path);
+        debug!("load from: {:?}", path);
         File::open(path)
             .ok()
             .map(|file| serde_json::from_reader::<File, Self>(file).ok())
@@ -156,26 +156,26 @@ fn index() -> Redirect {
 #[get("/sheet/<id>")]
 fn new(id: String) -> Template {
     if let Some(context) = context_load(&id) {
-        println!("{:#?}", &context);
-        println!("LOADING SHEET");
+        debug!("{:#?}", &context);
+        debug!("LOADING SHEET");
         Template::render("index", context)
     } else {
-        println!("NEW SHEET");
+        debug!("NEW SHEET");
         Template::render("index", &Context::default())
     }
 }
 
 #[post("/sheet/<id>", data = "<form>")]
 fn submit<'r>(id: String, form: Form<Contextual<'r, Character>>) -> (Status, Template) {
-    //println!("{:#?}", &form.value);
-    println!("{:#?}", &form.context);
+    //debug!("{:#?}", &form.value);
+    debug!("{:#?}", &form.context);
 
     if let Err(e) = context_store(&id, &form.context) {
         error!("ERROR: {:?}", e);
     }
     let template = match form.value {
         Some(ref character) => {
-            //println!("Character: {:#?}", character);
+            //debug!("Character: {:#?}", character);
             character.store_to_disk(id);
             Template::render("index", &form.context)
         }

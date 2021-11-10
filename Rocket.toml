@@ -1,2 +1,8 @@
+[default]
+character_directory = "/home/verpfeilt/characters"
+
 [global.limits]
 data-form = "2MiB"
+
+[debug]
+log_level = "debug"

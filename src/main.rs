@@ -3,8 +3,12 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::form::{Context, Contextual, Form, FromForm};
-use rocket::{http::Status, response::Redirect};
+use rocket::{
+    State,
+    http::Status, 
+    response::Redirect,
+    form::{Context, Contextual, Form, FromForm},
+};
 
 use rocket_dyn_templates::Template;
 
@@ -20,16 +24,14 @@ struct Character {
     notes: Notes,
 }
 
-const CHARACTERS_FOLDER: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/characters");
-
-fn context_load(id: &String) -> Option<serde_json::Value> {
+fn context_load(id: &String, folder: &str) -> Option<serde_json::Value> {
     use std::fs::File;
     use std::path::PathBuf;
 
     let mut id = String::from(id);
     id.push_str(".context.json");
 
-    let mut path = PathBuf::from(CHARACTERS_FOLDER);
+    let mut path = PathBuf::from(folder);
     path.push(id);
 
     debug!("load from: {:?}", path);
@@ -39,14 +41,14 @@ fn context_load(id: &String) -> Option<serde_json::Value> {
         .flatten()
 }
 
-fn context_store(id: &String, context: &Context) -> anyhow::Result<()> {
+fn context_store(id: &String, context: &Context, folder: &str) -> anyhow::Result<()> {
     use std::fs::File;
     use std::path::PathBuf;
 
     let mut filename = String::from(id);
     filename.push_str(".context.json");
 
-    let mut filepath = PathBuf::from(CHARACTERS_FOLDER);
+    let mut filepath = PathBuf::from(folder);
     filepath.push(filename);
 
     debug!("writing to {:?}", filepath);
@@ -56,12 +58,10 @@ fn context_store(id: &String, context: &Context) -> anyhow::Result<()> {
 }
 
 impl Character {
-    fn store_to_disk(&self, mut id: String) -> anyhow::Result<()> {
+    fn store_to_disk(&self, mut id: String, folder: &str) -> anyhow::Result<()> {
         use std::fs;
         use std::path::{Path, PathBuf};
-        // TODO crate_relative will likely not work for distributed binaries!
-        let path = CHARACTERS_FOLDER;
-        let path = Path::new(path);
+        let path = Path::new(folder);
         if !path.exists() {
             fs::create_dir(path)?;
         };
@@ -74,13 +74,12 @@ impl Character {
         Ok(())
     }
 
-    fn from_disk(mut id: String) -> Option<Self> {
+    fn from_disk(mut id: String, folder: &str) -> Option<Self> {
         use std::fs::File;
         use std::path::PathBuf;
 
         id.push_str(".character.json");
-        let path = CHARACTERS_FOLDER;
-        let mut path = PathBuf::from(path);
+        let mut path = PathBuf::from(folder);
         path.push(id);
         debug!("load from: {:?}", path);
         File::open(path)
@@ -154,8 +153,8 @@ fn index() -> Redirect {
 }
 
 #[get("/sheet/<id>")]
-fn new(id: String) -> Template {
-    if let Some(context) = context_load(&id) {
+fn new(id: String, folder: &State<CharacterDirectory>) -> Template {
+    if let Some(context) = context_load(&id, folder.as_str()) {
         debug!("{:#?}", &context);
         debug!("LOADING SHEET");
         Template::render("index", context)
@@ -166,17 +165,19 @@ fn new(id: String) -> Template {
 }
 
 #[post("/sheet/<id>", data = "<form>")]
-fn submit<'r>(id: String, form: Form<Contextual<'r, Character>>) -> (Status, Template) {
+fn submit<'r>(id: String, form: Form<Contextual<'r, Character>>, folder: &State<CharacterDirectory>) -> (Status, Template) {
     //debug!("{:#?}", &form.value);
     debug!("{:#?}", &form.context);
 
-    if let Err(e) = context_store(&id, &form.context) {
-        error!("ERROR: {:?}", e);
+    if let Err(e) = context_store(&id, &form.context, folder.as_str()) {
+        error!("ERROR: Failed storing context. {:?}", e);
     }
     let template = match form.value {
         Some(ref character) => {
             //debug!("Character: {:#?}", character);
-            character.store_to_disk(id);
+            if let Err(e) = character.store_to_disk(id, folder.as_str()) {
+                error!("ERROR: Failed storing character. {:?}", e);
+            }
             Template::render("index", &form.context)
         }
         None => Template::render("index", &form.context),
@@ -185,11 +186,24 @@ fn submit<'r>(id: String, form: Form<Contextual<'r, Character>>) -> (Status, Tem
     (form.context.status(), template)
 }
 
+#[derive(Deserialize)]
+struct CharacterDirectory{
+    character_directory: String,
+}
+
+impl CharacterDirectory {
+    fn as_str(&self) -> &str {
+        self.character_directory.as_str()
+    }
+}
+
 #[launch]
 fn rocket() -> _ {
+    use rocket::fairing::AdHoc;
     use rocket::fs;
 
     rocket::build()
+        .attach(AdHoc::config::<CharacterDirectory>())
         .mount("/", routes![index])
         .mount("/", routes![new, submit])
         .attach(Template::fairing())
